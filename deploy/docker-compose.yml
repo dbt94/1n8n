@@ -1,0 +1,61 @@
+# n8n Self-Hosting — Docker Compose (n8n + Postgres, persistent)
+# Anleitung: siehe deploy/SELF-HOSTING.md
+# Start:  cp deploy/.env.example deploy/.env  &&  (Werte setzen)  &&  docker compose -f deploy/docker-compose.yml up -d
+#
+# Nutzt das offizielle Image n8nio/n8n. Um DEINE Fork zu bauen statt des offiziellen
+# Images: siehe SELF-HOSTING.md → „Eigene Fork bauen" (image: -> build:).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - n8n_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      # --- Datenbank (Postgres statt SQLite = produktionstauglich) ---
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      # --- Öffentliche URL / Webhooks (WICHTIG hinter Proxy/Domain) ---
+      N8N_HOST: ${N8N_HOST}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-https}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      N8N_EDITOR_BASE_URL: ${WEBHOOK_URL}
+      # --- Credentials-Verschlüsselung: MUSS stabil bleiben, sonst sind gespeicherte
+      #     Credentials nach Neustart unbrauchbar. Einmal setzen, nie ändern. ---
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      # --- Zeitzone ---
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Europe/Berlin}
+      TZ: ${GENERIC_TIMEZONE:-Europe/Berlin}
+      # --- Task-Runner (empfohlen in aktuellen Versionen) ---
+      N8N_RUNNERS_ENABLED: "true"
+      # --- Telemetrie aus ---
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_pgdata:
+  n8n_data:
