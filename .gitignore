@@ -86,3 +86,6 @@ lefthook-local.yml
 IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
+
+# n8n self-hosting secrets (local only)
+deploy/.env
