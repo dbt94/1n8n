@@ -1,0 +1,44 @@
+{
+  "name": "Worker Replica (Speiche) — 1n8n",
+  "meta": { "description": "Projekt-fertige Speiche des 1n8n-Bodys. Fluss 9 -> Ring2 guard -> Ring3 mm run (gated) -> 10. Ruft den mm-Kern via Execute-Command (shell expandiert ${MODEL_DIR}). Trocken by default; --execute nur hinter Freigabe. Siehe MasterModel.bd/ARCHITEKTUR.md + .model/README.md." },
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "worker-1n8n", "responseMode": "responseNode" },
+      "id": "trigger",
+      "name": "9 · Anfrage (Aufgabe)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": { "command": "node ${MODEL_DIR}/bin/mm guard --json" },
+      "id": "guard",
+      "name": "Ring 2 · mm guard (Leck/Safety)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": { "command": "node ${MODEL_DIR}/bin/mm run \"={{ $json.body.intent }}\" --json" },
+      "id": "run",
+      "name": "Ring 3 · mm run (Direktor→Kritiker+Gate)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ { \"guard\": $node[\"Ring 2 · mm guard (Leck/Safety)\"].json.stdout, \"result\": $json.stdout, \"note\": \"10 · Ausgabe der bearbeiteten Aufgabe → Prüfer (7)\" } }}" },
+      "id": "respond",
+      "name": "10 · Ausgabe → Prüfer (7)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 300]
+    }
+  ],
+  "connections": {
+    "9 · Anfrage (Aufgabe)": { "main": [[{ "node": "Ring 2 · mm guard (Leck/Safety)", "type": "main", "index": 0 }]] },
+    "Ring 2 · mm guard (Leck/Safety)": { "main": [[{ "node": "Ring 3 · mm run (Direktor→Kritiker+Gate)", "type": "main", "index": 0 }]] },
+    "Ring 3 · mm run (Direktor→Kritiker+Gate)": { "main": [[{ "node": "10 · Ausgabe → Prüfer (7)", "type": "main", "index": 0 }]] }
+  },
+  "settings": {}
+}
