@@ -1,4 +1,4 @@
-name: 'Release: Chromatic'
+name: 'Test: Visual Chromatic'
 
 on:
   workflow_dispatch:
