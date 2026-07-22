@@ -1,0 +1,46 @@
+{
+  "name": "Telegram → model-chat (System-Chat vom Handy)",
+  "meta": { "description": "Telegram-Nachricht → model-chat-Backend (/chat) → Antwort zurück an Telegram. Erfordert Telegram-Bot-Credentials (BotFather-Token) in n8n. model-chat muss im model-net erreichbar sein (http://model-chat:8080)." },
+  "nodes": [
+    {
+      "parameters": { "updates": ["message"], "additionalFields": {} },
+      "id": "tg-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://model-chat:8080/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.message.text, session_id: 'tg-' + $json.message.chat.id }) }}",
+        "options": {}
+      },
+      "id": "http-chat",
+      "name": "model-chat /chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.reply }}",
+        "additionalFields": {}
+      },
+      "id": "tg-send",
+      "name": "Telegram · Antwort",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": { "main": [[{ "node": "model-chat /chat", "type": "main", "index": 0 }]] },
+    "model-chat /chat": { "main": [[{ "node": "Telegram · Antwort", "type": "main", "index": 0 }]] }
+  },
+  "settings": {}
+}
