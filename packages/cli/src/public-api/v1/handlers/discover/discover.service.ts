@@ -1,6 +1,6 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import path from 'path';
 
 import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
@@ -118,7 +118,10 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			let handlerModule = handlerCache.get(handlerPath);
 			if (!handlerModule) {
 				try {
-					const fullHandlerPath = path.join(publicApiRoot, handlerPath);
+					// The `.js` extension is required: under NodeNext, `await import()` is emitted
+					// as a native dynamic import, which (unlike `require`) does no extension guessing.
+					// The spec's handler paths are extensionless, so append it here.
+					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
 					const imported: unknown = await import(fullHandlerPath);
 					if (!isRecord(imported)) continue;
 					// Handlers use `export = xHandlers`, which surfaces as `.default`

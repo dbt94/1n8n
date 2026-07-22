@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
 import type snowflake from 'snowflake-sdk';
@@ -122,11 +122,7 @@ export function escapeSnowflakeObjectIdentifier(identifier: string): string {
 	return parts.map(escapeSnowflakeIdentifier).join('.');
 }
 
-export async function execute(
-	conn: snowflake.Connection,
-	sqlText: string,
-	binds: snowflake.InsertBinds,
-) {
+export async function execute(conn: snowflake.Connection, sqlText: string, binds: snowflake.Binds) {
 	return await new Promise<any[] | undefined>((resolve, reject) => {
 		conn.execute({
 			sqlText,

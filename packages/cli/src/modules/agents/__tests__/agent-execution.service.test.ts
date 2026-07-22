@@ -42,7 +42,6 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 		finishReason: 'stop',
 		usage: null,
 		totalCost: null,
-		toolCalls: [],
 		timeline: [],
 		startTime: 0,
 		duration: 1,
@@ -87,7 +86,6 @@ describe('AgentExecutionService', () => {
 				finishReason: 'stop',
 				usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 				totalCost: 0.01,
-				toolCalls: [],
 				timeline: [],
 				startTime: Date.parse('2026-05-07T10:00:00Z'),
 				duration: 1234,
@@ -223,7 +221,19 @@ describe('AgentExecutionService', () => {
 				record: makeMessageRecord({
 					usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 					totalCost: 25,
-					toolCalls: [{ name: 'lookup', input: {}, output: {} }],
+					timeline: [
+						{
+							type: 'tool-call',
+							kind: 'tool',
+							name: 'lookup',
+							toolCallId: 'tc1',
+							input: {},
+							output: {},
+							startTime: 0,
+							endTime: 123,
+							success: true,
+						},
+					],
 					duration: 123,
 				}),
 				telemetry: {
@@ -404,6 +414,28 @@ describe('AgentExecutionService', () => {
 
 			expect(result).toBeNull();
 			expect(agentExecutionRepository.findByThreadIdOrdered).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findLatestSuspendedRun', () => {
+		it('delegates to the repository and returns its result', async () => {
+			const suspended = { id: 'execution-1', source: 'telegram' } as AgentExecution;
+			agentExecutionRepository.findLatestSuspendedByThreadId.mockResolvedValue(suspended);
+
+			const result = await service.findLatestSuspendedRun('thread-1');
+
+			expect(agentExecutionRepository.findLatestSuspendedByThreadId).toHaveBeenCalledWith(
+				'thread-1',
+			);
+			expect(result).toBe(suspended);
+		});
+
+		it('returns null when there is no suspended execution in the thread', async () => {
+			agentExecutionRepository.findLatestSuspendedByThreadId.mockResolvedValue(null);
+
+			const result = await service.findLatestSuspendedRun('thread-1');
+
+			expect(result).toBeNull();
 		});
 	});
 
