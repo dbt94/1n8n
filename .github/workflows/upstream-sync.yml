@@ -75,7 +75,18 @@ jobs:
 
       - name: Übernehmen (konfliktfrei → push)
         if: steps.cfg.outputs.skip == 'false' && steps.merge.outputs.result == 'clean'
-        run: git push origin HEAD
+        run: |
+          set -euo pipefail
+          # GitHub-Regel: der eingebaute GITHUB_TOKEN darf .github/workflows/ NICHT pushen.
+          # Darum Upstream-Workflow-Änderungen verwerfen und die EIGENEN Workflow-Dateien behalten
+          # (inkl. dieser Datei); der restliche Upstream-Code wird übernommen. Für vollen
+          # Workflow-Sync bräuchte es einen PAT mit 'workflow'-Scope als Secret.
+          if ! git diff --quiet 'HEAD^' HEAD -- .github/workflows; then
+            git rm -r --quiet --ignore-unmatch .github/workflows >/dev/null
+            git checkout 'HEAD^' -- .github/workflows 2>/dev/null || true
+            git commit -q -m "sync: eigene .github/workflows behalten (GITHUB_TOKEN-Limit)"
+          fi
+          git push origin HEAD
 
       - name: Pull Request (bei Konflikt)
         if: steps.cfg.outputs.skip == 'false' && steps.merge.outputs.result == 'conflict'
