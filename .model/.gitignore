@@ -1,0 +1,4 @@
+# echte Secrets/Env dieses Bodys nie committen
+.env
+deploy/.env
+deploy/.env.validate

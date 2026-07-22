@@ -1,0 +1,75 @@
+# Self-Host-Stack der 1n8n-Speiche (n8n + Postgres), verdrahtet an den Model-Kern (mm) + OmniRoute.
+#
+# Prinzip: KEIN Quellcode-Build nötig — offizielles n8n-Image. Der Execute-Command-Node ruft
+# `node /model/bin/mm …`; dazu wird das ausgecheckte MasterModel.bd read-only als /model gemountet
+# (mm hat 0 Runtime-Deps, node ist im n8n-Image vorhanden). LLM läuft über OmniRoute.
+#
+# Start:  cp .env.example .env  &&  $EDITOR .env  &&  docker compose up -d
+# Netz `model-net` ist geteilt: weitere selbst-gehostete Bodies (OmniRoute, open-webui, stirling-pdf …)
+# treten ihm bei (als external network), damit der Stack zu „100% selbst gehostet" wächst.
+
+name: model-1n8n
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: model-n8n-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-n8n}
+      POSTGRES_USER: ${POSTGRES_USER:-n8n}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-n8n} -d ${POSTGRES_DB:-n8n}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - model-net
+
+  n8n:
+    image: ${N8N_IMAGE:-docker.n8n.io/n8nio/n8n:latest}
+    container_name: model-n8n
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${N8N_PORT_HOST:-5678}:5678"
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: "5432"
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB:-n8n}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678/}
+      GENERIC_TIMEZONE: ${TZ:-Europe/Berlin}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY in .env setzen (persistiert Credentials)}
+      # ── Verdrahtung zum Model ──
+      MODEL_DIR: /model
+      OMNIROUTE_BASE_URL: ${OMNIROUTE_BASE_URL:-http://omniroute:20128}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      # Model-Repo read-only rein → Execute-Command erreicht `node /model/bin/mm`
+      - ${MODEL_DIR:?MODEL_DIR = Pfad zum ausgecheckten MasterModel.bd}:/model:ro
+      # Speichen-Workflow zum Import bereitstellen (read-only)
+      - ../workflows:/model-workflows:ro
+    networks:
+      - model-net
+
+volumes:
+  pg_data:
+  n8n_data:
+
+networks:
+  # Geteiltes Netz für den ganzen Self-Host-Stack. Einmalig anlegen: docker network create model-net
+  # Alle Bodies (n8n, OmniRoute, open-webui, …) treten ihm als external bei.
+  model-net:
+    external: true
+    name: model-net
