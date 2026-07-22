@@ -23,7 +23,15 @@ POST /webhook/worker-1n8n  { "intent": "<aufgabe>" }
 |---|---|
 | `workflows/worker-replica.json` | projekt-fertige Speiche (dieser Body). Nur verifizierte Node-Typen (webhook · executeCommand · respondToWebhook), graph-valide. |
 | `.env.example` | Verdrahtung: `MODEL_DIR` (Pfad zum Model-Repo) + `OMNIROUTE_BASE_URL`. Echte Werte nie committen. |
-| `import-spoke.sh` | importiert die Speiche via `packages/cli/bin/n8n import:workflow`. |
+| `import-spoke.sh` | importiert die Speiche via `packages/cli/bin/n8n import:workflow` (bei lokalem Build). |
+| **`deploy/`** | **Self-Hosting per Docker** (n8n + Postgres, Model-Mount, OmniRoute) — offizielles Image, kein Build. Siehe [`deploy/README.md`](deploy/README.md). |
+
+## Selbst hosten (empfohlen)
+
+Für den Dauerbetrieb auf deinem eigenen Host: **`deploy/`** (Docker Compose) — `docker compose up -d`
+startet n8n + Postgres, mountet das Model read-only als `/model`, verdrahtet OmniRoute. Details in
+[`deploy/README.md`](deploy/README.md). Das geteilte Netz `model-net` ist der Anschlusspunkt, um den
+Stack zu „100% selbst gehostet" zu erweitern (OmniRoute, open-webui, stirling-pdf, Coolify …).
 
 ## In Betrieb nehmen
 
