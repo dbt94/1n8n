@@ -9,6 +9,8 @@ Model-Kern (`mm`) und OmniRoute. **Kein Quellcode-Build nötig** — offizielles
 
 ## Schritte
 ```bash
+docker network create model-net   # einmalig — das geteilte Netz des Stacks (external)
+
 cd .model/deploy
 cp .env.example .env
 #   MODEL_DIR        → absoluter Pfad zum ausgecheckten MasterModel.bd
@@ -33,11 +35,13 @@ ist gesetzt, `mm` hat 0 Runtime-Deps.
 
 ## LLM über OmniRoute (selbst gehostet)
 `OMNIROUTE_BASE_URL` zeigt per Default auf `http://omniroute:20128` im geteilten Netz `model-net`.
-OmniRoute aus seinem eigenen Repo in dasselbe Netz bringen:
+OmniRoute im eigenen Repo mit dem mitgelieferten Netz-Override starten:
 ```bash
-docker network create model-net 2>/dev/null || true   # einmalig (falls n8n-Stack noch nicht lief)
-# im omniroute-Repo: dessen Compose so konfigurieren, dass es model-net (external) beitritt
+# im omniroute-Repo:
+docker compose -f docker-compose.yml -f docker-compose.model-net.yml --profile base up -d
 ```
+Der Override (`docker-compose.model-net.yml`) hängt den Gateway an `model-net` (Alias `omniroute`),
+ohne die redis-Erreichbarkeit zu verlieren. Danach erreicht n8n den Gateway unter `http://omniroute:20128`.
 
 ## Zu „100% selbst gehostet" wachsen
 Das Netz `model-net` ist der Anschlusspunkt. Weitere Bodies treten als **external network** bei und

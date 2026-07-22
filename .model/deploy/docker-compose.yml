@@ -68,5 +68,8 @@ volumes:
   n8n_data:
 
 networks:
+  # Geteiltes Netz für den ganzen Self-Host-Stack. Einmalig anlegen: docker network create model-net
+  # Alle Bodies (n8n, OmniRoute, open-webui, …) treten ihm als external bei.
   model-net:
+    external: true
     name: model-net
